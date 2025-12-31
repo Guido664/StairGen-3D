@@ -1,5 +1,5 @@
 {
-  "name": "StairGen AI 3D",
-  "description": "Un progettista di scale 3D con funzionalità di styling e modifica basate su AI.",
+  "name": "StairGen 3D",
+  "description": "Un progettista di scale 3D con calcolo strutturale della soletta in cemento.",
   "requestFramePermissions": []
 }
