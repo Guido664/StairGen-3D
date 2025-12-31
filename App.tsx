@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Ruler } from 'lucide-react';
+import { Layers, Ruler, Download } from 'lucide-react';
 import Staircase3D from './components/Staircase3D';
 import { StairConfig } from './types';
 
@@ -22,6 +22,17 @@ export default function App() {
   const stepHeight = (config.totalHeight / config.numSteps).toFixed(1);
   const totalRun = ((config.numSteps - 1) * config.stepDepth).toFixed(0);
   const slope = (Math.atan(config.totalHeight / ((config.numSteps * config.stepDepth))) * (180 / Math.PI)).toFixed(1);
+
+  const handleExport = () => {
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      // Create a temporary link
+      const link = document.createElement('a');
+      link.download = 'scala-3d.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col md:flex-row h-screen overflow-hidden">
@@ -158,6 +169,17 @@ export default function App() {
               <span className="text-slate-500">Pendenza:</span>
               <span className="font-mono font-medium text-slate-700">{slope}°</span>
             </div>
+          </section>
+
+          {/* Actions */}
+          <section>
+             <button 
+              onClick={handleExport}
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors font-medium shadow-md"
+            >
+              <Download className="w-4 h-4" />
+              Esporta Disegno
+            </button>
           </section>
 
         </div>
