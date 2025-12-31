@@ -26,8 +26,10 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col md:flex-row h-screen overflow-hidden">
       
       {/* LEFT PANEL: CONTROLS */}
-      <div className="w-full md:w-96 bg-white border-r border-slate-200 flex flex-col h-full overflow-y-auto z-10 shadow-lg">
-        <div className="p-6 border-b border-slate-100">
+      {/* Mobile: Order 2 (Bottom), Height 55% */}
+      {/* Desktop: Order 1 (Left), Height 100%, Width 96 (24rem) */}
+      <div className="w-full md:w-96 bg-white border-r border-slate-200 flex flex-col z-10 shadow-lg order-2 md:order-1 h-[55%] md:h-full overflow-y-auto">
+        <div className="p-4 md:p-6 border-b border-slate-100">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
             <Layers className="w-6 h-6 text-blue-600" />
             StairGen
@@ -35,7 +37,7 @@ export default function App() {
           <p className="text-slate-500 text-sm mt-1">Configuratore Scale 3D</p>
         </div>
 
-        <div className="flex-1 p-6 space-y-8">
+        <div className="flex-1 p-4 md:p-6 space-y-6 md:space-y-8 pb-24 md:pb-6">
           
           {/* Dimensions Section */}
           <section className="space-y-4">
@@ -150,11 +152,11 @@ export default function App() {
       </div>
 
       {/* RIGHT PANEL: VISUALIZATION */}
-      <div className="flex-1 bg-slate-200 relative flex flex-col">
-        <div className="flex-1 relative">
-           <div className="w-full h-full">
-              <Staircase3D config={config} />
-           </div>
+      {/* Mobile: Order 1 (Top), Height 45% */}
+      {/* Desktop: Order 2 (Right), Height 100%, Flex-1 */}
+      <div className="flex-1 bg-slate-200 relative flex flex-col order-1 md:order-2 h-[45%] md:h-full">
+        <div className="w-full h-full">
+           <Staircase3D config={config} />
         </div>
       </div>
     </div>
