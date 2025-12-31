@@ -110,17 +110,17 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
 
   // --- Dimension Logic ---
   const dims = useMemo(() => {
-    // 1. Total Height (Side)
+    // 1. Total Height (Side -> Moved to Front Face)
     const heightLine = {
-      start: [totalRun + 0.2, 0, stairW / 2] as [number, number, number],
-      end: [totalRun + 0.2, totalRise, stairW / 2] as [number, number, number],
+      start: [totalRun + 0.2, 0, stairW] as [number, number, number],
+      end: [totalRun + 0.2, totalRise, stairW] as [number, number, number],
       label: `${totalHeight}cm`,
     };
 
-    // 2. Total Run (Bottom)
+    // 2. Total Run (Bottom -> Moved to Front Face)
     const runLine = {
-      start: [0, -0.2, stairW / 2] as [number, number, number],
-      end: [totalRun, -0.2, stairW / 2] as [number, number, number],
+      start: [0, -0.2, stairW] as [number, number, number],
+      end: [totalRun, -0.2, stairW] as [number, number, number],
       label: `${(totalRun * 100).toFixed(0)}cm`,
     };
 
