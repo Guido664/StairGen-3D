@@ -13,6 +13,7 @@ const DEFAULT_CONFIG: StairConfig = {
 
 export default function App() {
   const [config, setConfig] = useState<StairConfig>(DEFAULT_CONFIG);
+  const [showDimensions, setShowDimensions] = useState(true);
 
   const handleInputChange = (key: keyof StairConfig, value: number) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -41,9 +42,20 @@ export default function App() {
           
           {/* Dimensions Section */}
           <section className="space-y-4">
-            <div className="flex items-center gap-2 text-slate-800 font-semibold mb-2">
-              <Ruler className="w-4 h-4" />
-              <h2>Dimensioni</h2>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                <Ruler className="w-4 h-4" />
+                <h2>Dimensioni</h2>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={showDimensions}
+                  onChange={(e) => setShowDimensions(e.target.checked)}
+                  className="w-4 h-4 accent-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-xs text-slate-500 font-medium group-hover:text-blue-600 transition-colors">Mostra quote</span>
+              </label>
             </div>
 
             <div className="space-y-4">
@@ -156,7 +168,7 @@ export default function App() {
       {/* Desktop: Order 2 (Right), Height 100%, Flex-1 */}
       <div className="flex-1 bg-slate-200 relative flex flex-col order-1 md:order-2 h-[45%] md:h-full">
         <div className="w-full h-full">
-           <Staircase3D config={config} />
+           <Staircase3D config={config} showDimensions={showDimensions} />
         </div>
       </div>
     </div>
