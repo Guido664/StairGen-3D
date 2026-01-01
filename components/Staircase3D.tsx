@@ -213,17 +213,24 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
       label: `${width}cm`,
     };
 
-    // 4. Single Step Riser (Zoomed detail on first step - FRONT SIDE)
+    // Determine which step to measure for standard riser/tread dimensions.
+    // If step 1 is a landing, we measure step 2 to show standard step dimensions.
+    const measureStepIdx = landingStep === 1 ? 2 : 1;
+    // X position where this step starts.
+    const measureStartX = landingStep === 1 ? landingD : 0;
+    const measureY = measureStepIdx * riserH;
+
+    // 4. Single Step Riser (Zoomed detail)
     const stepRiserLine = {
-        start: [-0.15, 0, stairW] as [number, number, number],
-        end: [-0.15, riserH, stairW] as [number, number, number],
+        start: [measureStartX - 0.15, measureY - riserH, stairW] as [number, number, number],
+        end: [measureStartX - 0.15, measureY, stairW] as [number, number, number],
         label: `${(riserH * 100).toFixed(1)}`,
     }
 
-    // 5. Single Step Tread (FRONT SIDE)
+    // 5. Single Step Tread
     const stepTreadLine = {
-        start: [0, riserH + 0.15, stairW] as [number, number, number],
-        end: [treadD, riserH + 0.15, stairW] as [number, number, number],
+        start: [measureStartX, measureY + 0.15, stairW] as [number, number, number],
+        end: [measureStartX + treadD, measureY + 0.15, stairW] as [number, number, number],
         label: `${stepDepth}`, 
     }
     
@@ -244,9 +251,21 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
         label: `${slabThickness}`, 
     };
 
-    return { heightLine, runLine, widthLine, stepRiserLine, stepTreadLine, thicknessLine };
+    // 7. Landing Depth
+    let landingLine = undefined;
+    if (landingStep > 0 && landingStep <= numSteps) {
+         const landingStartX = (landingStep - 1) * treadD;
+         const landingY = landingStep * riserH;
+         landingLine = {
+            start: [landingStartX, landingY + 0.15, stairW] as [number, number, number],
+            end: [landingStartX + landingD, landingY + 0.15, stairW] as [number, number, number],
+            label: `${landingDepth}`,
+         }
+    }
 
-  }, [totalHeight, width, numSteps, stepDepth, slabThickness, riserH, treadD, stairW, totalRun, totalRise, thickness, landingStep]);
+    return { heightLine, runLine, widthLine, stepRiserLine, stepTreadLine, thicknessLine, landingLine };
+
+  }, [totalHeight, width, numSteps, stepDepth, slabThickness, riserH, treadD, stairW, totalRun, totalRise, thickness, landingStep, landingD, landingDepth]);
 
 
   return (
@@ -277,6 +296,7 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
           <DimensionLine {...dims.stepRiserLine} color="#fbbf24" /> 
           <DimensionLine {...dims.stepTreadLine} color="#fbbf24" />
           <DimensionLine {...dims.thicknessLine} color="#38bdf8" />
+          {dims.landingLine && <DimensionLine {...dims.landingLine} color="#fbbf24" />}
         </group>
       )}
     </group>

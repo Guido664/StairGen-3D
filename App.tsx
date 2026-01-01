@@ -4,10 +4,10 @@ import Staircase3D from './components/Staircase3D';
 import { StairConfig } from './types';
 
 const DEFAULT_CONFIG: StairConfig = {
-  totalHeight: 280, // Standard floor height in cm
+  totalHeight: 270, // Changed from 280 to 270
   width: 90,       // Standard stair width in cm
   numSteps: 14,    // ~20cm riser
-  stepDepth: 25,   // ~25cm tread
+  stepDepth: 30,   // Changed from 25 to 30
   slabThickness: 20, // Default concrete thickness
   landingStep: 0,    // 0 = no landing
   landingDepth: 90,  // Standard landing depth
@@ -15,7 +15,7 @@ const DEFAULT_CONFIG: StairConfig = {
 
 export default function App() {
   const [config, setConfig] = useState<StairConfig>(DEFAULT_CONFIG);
-  const [showDimensions, setShowDimensions] = useState(true);
+  const [showDimensions, setShowDimensions] = useState(false); // Changed default to false
 
   const handleInputChange = (key: keyof StairConfig, value: number) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
