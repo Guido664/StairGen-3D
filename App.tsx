@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Ruler, Download } from 'lucide-react';
+import { Layers, Ruler, Download, ArrowDownToLine } from 'lucide-react';
 import Staircase3D from './components/Staircase3D';
 import { StairConfig } from './types';
 
@@ -9,6 +9,8 @@ const DEFAULT_CONFIG: StairConfig = {
   numSteps: 14,    // ~20cm riser
   stepDepth: 25,   // ~25cm tread
   slabThickness: 20, // Default concrete thickness
+  landingStep: 0,    // 0 = no landing
+  landingDepth: 90,  // Standard landing depth
 };
 
 export default function App() {
@@ -20,8 +22,32 @@ export default function App() {
   };
 
   const stepHeight = (config.totalHeight / config.numSteps).toFixed(1);
-  const totalRun = ((config.numSteps - 1) * config.stepDepth).toFixed(0);
-  const slope = (Math.atan(config.totalHeight / ((config.numSteps * config.stepDepth))) * (180 / Math.PI)).toFixed(1);
+  
+  // Calculate total run including landing if present
+  let calculatedRun = (config.numSteps - 1) * config.stepDepth;
+  if (config.landingStep > 0 && config.landingStep <= config.numSteps) {
+    // If there is a landing, one "step depth" is replaced by "landing depth"
+    // However, usually the landing is ONE of the steps (the flat part).
+    // If landingStep is the Nth step, its run is landingDepth instead of stepDepth.
+    // The total run is sum of all runs.
+    // Logic: (NumSteps * StepDepth) - StepDepth + LandingDepth? 
+    // Usually total run = Sum of all treads. Last riser doesn't add run usually unless nosing.
+    // In our model: Total Run = sum of (NumSteps) treads/landings.
+    // We treat the top floor as arrival, so NumSteps treads are drawn? 
+    // Actually in the 3D model we draw NumSteps runs.
+    // Let's match the 3D model logic:
+    calculatedRun = 0;
+    for (let i = 1; i <= config.numSteps; i++) {
+        calculatedRun += (i === config.landingStep) ? config.landingDepth : config.stepDepth;
+    }
+    // Usually the last "tread" is the floor arrival, but our 3D model draws it.
+    // If we count "ingombro a terra", it's usually excluding the last step if it's flush with floor, 
+    // but here we visualize the whole structure. Let's keep consistency with the shape width.
+  } else {
+      calculatedRun = config.numSteps * config.stepDepth;
+  }
+
+  const slope = (Math.atan(config.totalHeight / calculatedRun) * (180 / Math.PI)).toFixed(1);
 
   const handleExport = () => {
     const canvas = document.querySelector('canvas');
@@ -155,6 +181,51 @@ export default function App() {
             </div>
           </section>
 
+          {/* Landing Section */}
+          <section className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-slate-800 font-semibold mb-2">
+              <ArrowDownToLine className="w-4 h-4" />
+              <h2>Pianerottolo</h2>
+            </div>
+            
+            <div>
+               <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1 block">Inserisci al gradino n.</label>
+               <div className="flex items-center gap-3">
+                 <input 
+                    type="range" min="0" max={config.numSteps} step="1"
+                    value={config.landingStep}
+                    onChange={(e) => handleInputChange('landingStep', parseInt(e.target.value))}
+                    className="w-full accent-blue-600"
+                  />
+                 <input 
+                    type="number" 
+                    value={config.landingStep}
+                    onChange={(e) => handleInputChange('landingStep', parseInt(e.target.value))}
+                    className="w-16 p-1 border rounded text-sm text-center font-mono"
+                  />
+               </div>
+               <p className="text-[10px] text-slate-400 mt-1">0 = Nessun pianerottolo</p>
+            </div>
+
+            {config.landingStep > 0 && (
+              <div>
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1 block">Profondità Pianerottolo (cm)</label>
+                 <input 
+                  type="range" min="60" max="200" step="5"
+                  value={config.landingDepth}
+                  onChange={(e) => handleInputChange('landingDepth', parseInt(e.target.value))}
+                  className="w-full accent-blue-600 mb-2"
+                />
+                 <input 
+                    type="number" 
+                    value={config.landingDepth}
+                    onChange={(e) => handleInputChange('landingDepth', parseInt(e.target.value))}
+                    className="w-20 p-1 border rounded text-sm text-right font-mono block ml-auto"
+                />
+              </div>
+            )}
+          </section>
+
           {/* Stats Info */}
           <section className="bg-slate-100 p-4 rounded-lg space-y-2 text-sm border border-slate-200">
             <div className="flex justify-between">
@@ -163,12 +234,14 @@ export default function App() {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Ingombro Totale:</span>
-              <span className="font-mono font-medium text-slate-700">{totalRun} cm</span>
+              <span className="font-mono font-medium text-slate-700">{calculatedRun.toFixed(0)} cm</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Pendenza:</span>
-              <span className="font-mono font-medium text-slate-700">{slope}°</span>
-            </div>
+            {config.landingStep === 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Pendenza:</span>
+                <span className="font-mono font-medium text-slate-700">{slope}°</span>
+              </div>
+            )}
           </section>
 
           {/* Actions */}

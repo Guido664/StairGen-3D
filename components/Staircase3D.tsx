@@ -61,38 +61,116 @@ const Tick: React.FC<{ point: THREE.Vector3; dir: THREE.Vector3; size: number; c
 }
 
 const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = ({ config, showDimensions }) => {
-  const { totalHeight, width, numSteps, stepDepth, slabThickness } = config;
+  const { totalHeight, width, numSteps, stepDepth, slabThickness, landingStep, landingDepth } = config;
   
   // Conversion constants
   const riserH = (totalHeight / 100) / numSteps;
   const treadD = stepDepth / 100;
   const stairW = width / 100;
   const thickness = slabThickness / 100;
-  const totalRun = numSteps * treadD;
-  const totalRise = numSteps * riserH;
+  const landingD = landingDepth / 100;
 
-  const geometry = useMemo(() => {
+  // Calculate Geometry and Total Run
+  const { geometry, totalRun, totalRise } = useMemo(() => {
     const shape = new THREE.Shape();
-    
-    // Start at bottom-left origin
     shape.moveTo(0, 0);
 
-    // 1. Draw Steps
-    for (let i = 0; i < numSteps; i++) {
-      shape.lineTo(i * treadD, (i + 1) * riserH);
-      shape.lineTo((i + 1) * treadD, (i + 1) * riserH);
+    let currentX = 0;
+    let currentY = 0;
+    
+    // --- 1. Draw Top Profile (Steps) ---
+    for (let i = 1; i <= numSteps; i++) {
+      currentY += riserH;
+      shape.lineTo(currentX, currentY); // Riser
+      
+      const isLanding = i === landingStep;
+      const run = isLanding ? landingD : treadD;
+      
+      currentX += run;
+      shape.lineTo(currentX, currentY); // Tread/Landing
     }
 
-    // 2. Slab Bottom Calculation
-    const angle = Math.atan2(totalRise, totalRun);
-    const verticalOffset = thickness / Math.cos(angle);
-    
-    // Top-rear soffit point
-    shape.lineTo(totalRun, Math.max(0, totalRise - verticalOffset));
+    const calculatedTotalRun = currentX;
+    const calculatedTotalRise = currentY;
 
-    // Bottom-start soffit intersection
-    const xIntersection = verticalOffset / Math.tan(angle);
-    shape.lineTo(Math.max(0, xIntersection), 0);
+    // --- 2. Draw Bottom Profile (Soffit) ---
+    // Calculate angle of standard flight
+    const angle = Math.atan2(riserH, treadD);
+    const verticalOffset = thickness / Math.cos(angle);
+
+    if (landingStep > 0 && landingStep <= numSteps) {
+        // COMPLEX CASE: Flight -> Landing -> Flight OR Flight -> Landing (End)
+        
+        // Coordinates of Landing Surface
+        // Landing is at step index 'landingStep'.
+        const landingStartX = (landingStep - 1) * treadD;
+        const landingSurfaceY = landingStep * riserH;
+        const landingSoffitY = landingSurfaceY - thickness; // Flat part thickness assumed vertical
+
+        // Slope m for flights
+        const m = Math.tan(angle);
+
+        // Equation of Line 1 (Lower Flight Soffit): y = m*x - verticalOffset
+        
+        // Intersection 1 (Lower Flight Soffit -> Landing Soffit)
+        // m*x - verticalOffset = landingSoffitY => x = (landingSoffitY + verticalOffset) / m
+        const xIntersect1 = (landingSoffitY + verticalOffset) / m;
+        
+        if (landingStep === numSteps) {
+             // Case: Flight -> Landing (End)
+             // The soffit is flat from xIntersect1 to the end.
+             // We draw backwards from End.
+
+             // Point A: End of stair, bottom of slab.
+             // Since it's a landing, top is flat, so bottom is flat.
+             shape.lineTo(calculatedTotalRun, landingSoffitY);
+
+             // Point C: Intersection 1 (Start of Landing Soffit)
+             shape.lineTo(xIntersect1, landingSoffitY);
+
+             // Point D: Bottom Start Intersection
+             // Intersect Line 1 with y=0
+             const xBottomStart = verticalOffset / m;
+             shape.lineTo(Math.max(0, xBottomStart), 0);
+
+        } else {
+             // Case: Flight -> Landing -> Flight
+             const landingEndX = landingStartX + landingD;
+             
+             // Equation of Line 3 (Upper Flight Soffit)
+             // y = m * (x - (landingD - treadD)) - verticalOffset
+             
+             // Intersection 2 (Landing Soffit -> Upper Flight Soffit)
+             const xIntersect2 = xIntersect1 + (landingD - treadD);
+
+             // Draw the soffit path (Backwards from top right)
+             
+             // Point A: Top Right Soffit (Angled)
+             const topSoffitY = m * (calculatedTotalRun - (landingD - treadD)) - verticalOffset;
+             shape.lineTo(calculatedTotalRun, Math.max(0, topSoffitY)); 
+
+             // Point B: Intersection 2 (End of Landing Soffit)
+             shape.lineTo(xIntersect2, landingSoffitY);
+
+             // Point C: Intersection 1 (Start of Landing Soffit)
+             shape.lineTo(xIntersect1, landingSoffitY);
+
+             // Point D: Bottom Start Intersection
+             const xBottomStart = verticalOffset / m;
+             shape.lineTo(Math.max(0, xBottomStart), 0);
+        }
+
+    } else {
+        // STANDARD CASE: Straight flight
+        // Top-rear soffit point
+        // y = mx - c
+        const topSoffitY = (Math.tan(angle) * calculatedTotalRun) - verticalOffset;
+        shape.lineTo(calculatedTotalRun, Math.max(0, topSoffitY));
+
+        // Bottom-start soffit intersection
+        const xIntersection = verticalOffset / Math.tan(angle);
+        shape.lineTo(Math.max(0, xIntersection), 0);
+    }
 
     shape.lineTo(0, 0);
 
@@ -105,19 +183,23 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
       bevelSegments: 2,
     };
 
-    return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  }, [totalHeight, width, numSteps, stepDepth, slabThickness, riserH, treadD, stairW, thickness, totalRun, totalRise]);
+    return {
+        geometry: new THREE.ExtrudeGeometry(shape, extrudeSettings),
+        totalRun: calculatedTotalRun,
+        totalRise: calculatedTotalRise
+    };
+  }, [totalHeight, width, numSteps, stepDepth, slabThickness, landingStep, landingDepth, riserH, treadD, stairW, thickness, landingD]);
 
   // --- Dimension Logic ---
   const dims = useMemo(() => {
-    // 1. Total Height (Side -> Moved to Front Face)
+    // 1. Total Height (Side -> Front)
     const heightLine = {
       start: [totalRun + 0.2, 0, stairW] as [number, number, number],
       end: [totalRun + 0.2, totalRise, stairW] as [number, number, number],
       label: `${totalHeight}cm`,
     };
 
-    // 2. Total Run (Bottom -> Moved to Front Face)
+    // 2. Total Run (Bottom -> Front)
     const runLine = {
       start: [0, -0.2, stairW] as [number, number, number],
       end: [totalRun, -0.2, stairW] as [number, number, number],
@@ -125,7 +207,6 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
     };
 
     // 3. Width (Top/Front)
-    // Place this slightly above the first step
     const widthLine = {
       start: [treadD / 2, riserH + 0.3, 0] as [number, number, number],
       end: [treadD / 2, riserH + 0.3, stairW] as [number, number, number],
@@ -133,40 +214,39 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
     };
 
     // 4. Single Step Riser (Zoomed detail on first step - FRONT SIDE)
-    // Positioned to the left of the first step start (x=0)
     const stepRiserLine = {
         start: [-0.15, 0, stairW] as [number, number, number],
         end: [-0.15, riserH, stairW] as [number, number, number],
-        label: `${(riserH * 100).toFixed(1)}`, // Just number
+        label: `${(riserH * 100).toFixed(1)}`,
     }
 
     // 5. Single Step Tread (FRONT SIDE)
-    // Positioned above the first tread
     const stepTreadLine = {
         start: [0, riserH + 0.15, stairW] as [number, number, number],
         end: [treadD, riserH + 0.15, stairW] as [number, number, number],
-        label: `${stepDepth}`, // Just number
+        label: `${stepDepth}`, 
     }
     
-    // 6. Slab Thickness (Visual indicator at approx middle)
-    const angle = Math.atan2(totalRise, totalRun);
-    const midX = totalRun / 2;
-    // Calculate soffit Y at midX
-    const verticalOffset = thickness / Math.cos(angle);
+    // 6. Slab Thickness 
+    // Calculate for first flight (simpler)
+    const angle = Math.atan2(riserH, treadD);
+    // Find a point in the middle of first flight
+    const midStep = landingStep > 1 ? Math.floor(landingStep/2) : Math.floor(numSteps/2);
+    const midX = midStep * treadD;
+    // Calculate pitch line Y at this X
     const midYPitch = midX * Math.tan(angle);
+    const verticalOffset = thickness / Math.cos(angle);
     const midYSoffit = midYPitch - verticalOffset;
-    
-    // Calculate perpendicular point for thickness visualization
-    // Normal vector direction from soffit towards pitch line
+
     const thicknessLine = {
         start: [midX, midYSoffit, stairW + 0.05] as [number, number, number],
         end: [midX - Math.sin(angle)*thickness, midYSoffit + Math.cos(angle)*thickness, stairW + 0.05] as [number, number, number],
-        label: `${slabThickness}`, // Just number
+        label: `${slabThickness}`, 
     };
 
     return { heightLine, runLine, widthLine, stepRiserLine, stepTreadLine, thicknessLine };
 
-  }, [totalHeight, width, numSteps, stepDepth, slabThickness, riserH, treadD, stairW, totalRun, totalRise, thickness]);
+  }, [totalHeight, width, numSteps, stepDepth, slabThickness, riserH, treadD, stairW, totalRun, totalRise, thickness, landingStep]);
 
 
   return (
@@ -194,7 +274,6 @@ const StairModel: React.FC<{ config: StairConfig; showDimensions: boolean }> = (
           <DimensionLine {...dims.heightLine} />
           <DimensionLine {...dims.runLine} />
           <DimensionLine {...dims.widthLine} />
-          {/* Detail Dimensions */}
           <DimensionLine {...dims.stepRiserLine} color="#fbbf24" /> 
           <DimensionLine {...dims.stepTreadLine} color="#fbbf24" />
           <DimensionLine {...dims.thicknessLine} color="#38bdf8" />
@@ -232,15 +311,15 @@ const Staircase3D: React.FC<Staircase3DProps> = ({ config, showDimensions }) => 
         {/* Floor Grid */}
         <Grid 
           position={[0, -0.01, 0]} 
-          args={[10, 10]} 
+          args={[20, 20]} 
           cellSize={0.5} 
           cellThickness={0.5} 
           cellColor="#64748b" 
           sectionSize={1}
           sectionColor="#94a3b8"
-          fadeDistance={20}
+          fadeDistance={30}
         />
-        <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+        <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={20} blur={2.5} far={4} />
         
         <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} target={[1, 1, 0]} />
       </Canvas>
